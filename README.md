@@ -452,7 +452,9 @@ python server.py
 
 ## License
 
-MIT License - Feel free to use and modify for your needs.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+Feel free to use, modify, and distribute this software for any purpose.
 
 ---
 
