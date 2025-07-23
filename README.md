@@ -35,23 +35,84 @@ An MCP (Model Context Protocol) server that provides AI-powered customer health 
 - **At Risk** (60-79): Customer needs attention to prevent churn
 - **Critical** (0-59): Customer requires immediate intervention
 
-## Quick Start
+## Installation
 
-### 1. Setup Environment
+### 1. Clone the Repository
 
 ```bash
-# Navigate to project directory
+git clone https://github.com/tushar-badhwar/gtm-agent-user-health-analyzer.git
 cd gtm-agent-user-health-analyzer
+```
+
+### 2. Setup Python Environment
+
+**Option A: Using Virtual Environment (Recommended)**
+```bash
+# Create virtual environment
+python3 -m venv venv
+
+# Activate virtual environment
+# Linux/macOS:
+source venv/bin/activate
+# Windows:
+venv\Scripts\activate
 
 # Install dependencies
 pip install -r requirements.txt
-
-# Setup environment variables
-cp .env.example .env
-# Edit .env and add your API keys
 ```
 
-### 2. Configure MCP Client
+**Option B: Using Conda**
+```bash
+# Create conda environment
+conda create -n customer-health python=3.9
+conda activate customer-health
+
+# Install dependencies
+pip install -r requirements.txt
+```
+
+**Option C: System-wide Installation**
+```bash
+# Install dependencies globally (not recommended for production)
+pip install -r requirements.txt
+```
+
+### 3. Setup Environment Variables
+
+```bash
+# Copy environment template
+cp .env.example .env
+
+# Edit .env file and add your API keys
+nano .env  # or use your preferred editor
+```
+
+**Required environment variables:**
+```bash
+OPENAI_API_KEY=your_openai_api_key_here
+OPENAI_MODEL=gpt-4o-mini
+
+# Optional - for Airtable integration
+AIRTABLE_API_KEY=your_airtable_api_key_here
+AIRTABLE_BASE_ID=your_airtable_base_id_here
+```
+
+### 4. Test the Installation
+
+```bash
+# Test the server starts correctly
+python3 server.py
+
+# You should see output like:
+# 🚀 Customer Health Analyzer MCP Server starting...
+# 💡 Server is ready to handle requests from Claude Desktop
+```
+
+If the server starts without errors, press `Ctrl+C` to stop it and proceed to configuration.
+
+## Quick Start
+
+### 1. Configure MCP Client
 
 Add this server to your MCP client configuration (e.g., Claude Desktop):
 
@@ -95,16 +156,33 @@ Add this server to your MCP client configuration (e.g., Claude Desktop):
 }
 ```
 
-### 3. Test the Server
+### 2. Start the Server
 
 ```bash
-# Test the server directly
-python server.py
+# Start the MCP server
+python3 server.py
 
-# Or install and run
-pip install -e .
-customer-health-analyzer-mcp
+# Server should start and show:
+# 🚀 Customer Health Analyzer MCP Server starting...
+# 💡 Server is ready to handle requests from Claude Desktop
+
+# Keep this terminal open - the server must run while using Claude Desktop
 ```
+
+### 3. Test with Claude Desktop
+
+Once both the server is running and Claude Desktop is configured:
+
+1. **Test data source switching:**
+   - "What data sources do I have available?"
+   - "Switch to static data and list all customers"
+
+2. **Test customer analysis:**
+   - "Analyze the health of all customers"
+   - "Show me details for customer CUST001"
+
+3. **Test recommendations:**
+   - "Give me recommendations for improving customer health"
 
 ## Available MCP Tools
 
