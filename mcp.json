@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "customer-health-analyzer": {
+      "command": "python",
+      "args": ["/home/tbadhwar/gtm-agent-user-health-analyzer/server.py"],
+      "env": {
+        "OPENAI_API_KEY": "${OPENAI_API_KEY}",
+        "PYTHONPATH": "/home/tbadhwar/gtm-agent-user-health-analyzer"
+      }
+    }
+  }
+}

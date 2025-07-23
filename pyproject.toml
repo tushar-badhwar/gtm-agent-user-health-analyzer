@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "customer-health-analyzer-mcp"
+version = "1.0.0"
+description = "An MCP server for AI-powered customer health analysis for GTM teams"
+authors = [
+    { name = "Customer Health Analyzer", email = "support@example.com" }
+]
+license = { text = "MIT" }
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "mcp",
+    "anthropic",
+    "pydantic",
+    "pandas",
+    "python-dotenv"
+]
+
+[project.urls]
+Homepage = "https://github.com/example/customer-health-analyzer-mcp"
+Repository = "https://github.com/example/customer-health-analyzer-mcp"
+
+[project.scripts]
+customer-health-analyzer-mcp = "server:main"
+
+[tool.setuptools]
+py-modules = ["server"]

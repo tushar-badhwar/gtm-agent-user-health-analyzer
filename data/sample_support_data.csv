@@ -1,0 +1,9 @@
+customer_id,ticket_id,created_date,priority,status,category,resolution_time_hours,sentiment
+CUST001,TKT001,2024-11-25,medium,closed,technical,24,neutral
+CUST001,TKT002,2024-11-28,low,closed,question,4,positive
+CUST002,TKT003,2024-11-20,high,closed,bug,72,negative
+CUST002,TKT004,2024-11-30,low,open,feature_request,0,positive
+CUST003,TKT005,2024-11-10,high,closed,technical,96,very_negative
+CUST003,TKT006,2024-11-18,medium,open,billing,0,negative
+CUST004,TKT007,2024-11-22,low,closed,question,2,positive
+CUST005,TKT008,2024-11-19,high,open,technical,120,very_negative

@@ -1,0 +1,6 @@
+customer_id,company_name,last_contact_date,contact_type,contact_outcome,account_value,contract_end_date,csm_name
+CUST001,TechCorp Inc,2024-11-28,email,positive,50000,2025-03-15,Sarah Johnson
+CUST002,DataSolutions LLC,2024-11-30,phone,very_positive,120000,2025-06-30,Michael Chen
+CUST003,StartupXYZ,2024-11-15,email,no_response,15000,2025-01-31,Sarah Johnson
+CUST004,Enterprise Global,2024-11-29,meeting,positive,200000,2025-09-15,Lisa Rodriguez
+CUST005,SmallBiz Co,2024-11-20,phone,negative,8000,2025-02-28,Sarah Johnson
