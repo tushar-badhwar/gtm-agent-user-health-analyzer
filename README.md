@@ -10,6 +10,9 @@ An MCP (Model Context Protocol) server that provides AI-powered customer health 
 - **MCP Integration**: Works seamlessly with Claude Desktop and other MCP clients
 - **Real-time Analysis**: Process customer data on-demand through MCP tools
 - **Dynamic Data Sources**: Connects to HubSpot, Airtable, Zapier, or static data
+- **🆕 Airtable Discovery**: Automatically discover all accessible bases and table schemas
+- **🆕 Base Switching**: Easily switch between different Airtable bases with one command
+- **🆕 Smart Table Detection**: AI-powered identification of customer data tables
 
 ## Architecture
 
@@ -186,8 +189,10 @@ Once both the server is running and Claude Desktop is configured:
 
 ## Available MCP Tools
 
-### 1. `set_data_source`
-**NEW**: Select which data source to use for customer health analysis.
+### Core Customer Health Tools
+
+#### 1. `set_data_source`
+Select which data source to use for customer health analysis.
 
 **Parameters:**
 - `data_source` (required): "static", "airtable", "hubspot", or "zapier"
@@ -197,15 +202,15 @@ Once both the server is running and Claude Desktop is configured:
 Use the set_data_source tool with data_source "airtable" to switch to your Airtable database
 ```
 
-### 2. `get_data_source_status`
-**NEW**: Show current data source configuration and available options.
+#### 2. `get_data_source_status`
+Show current data source configuration and available options.
 
 **Example:**
 ```
 Use the get_data_source_status tool to see which data sources are configured
 ```
 
-### 3. `analyze_customer_health`
+#### 3. `analyze_customer_health`
 Analyze customer health scores for all customers or a specific customer from the currently selected data source.
 
 **Parameters:**
@@ -217,7 +222,7 @@ Analyze customer health scores for all customers or a specific customer from the
 Use the analyze_customer_health tool to get a complete health analysis for all customers
 ```
 
-### 4. `list_customers`
+#### 4. `list_customers`
 List all available customers in the currently selected data source.
 
 **Example:**
@@ -225,7 +230,7 @@ List all available customers in the currently selected data source.
 Use the list_customers tool to see what customers are available for analysis
 ```
 
-### 5. `get_customer_details`
+#### 5. `get_customer_details`
 Get detailed information about a specific customer.
 
 **Parameters:**
@@ -236,7 +241,7 @@ Get detailed information about a specific customer.
 Use the get_customer_details tool with customer_id "CUST001" to see detailed customer information
 ```
 
-### 6. `get_recommendations`
+#### 6. `get_recommendations`
 Get AI-powered recommendations for improving customer health.
 
 **Parameters:**
@@ -246,6 +251,66 @@ Get AI-powered recommendations for improving customer health.
 ```
 Use the get_recommendations tool with customer_id "CUST003" to get specific action items for this at-risk customer
 ```
+
+### 🆕 Airtable Discovery & Management Tools
+
+#### 7. `discover_airtable_bases`
+Discover all accessible Airtable bases for the configured API token.
+
+**Example:**
+```
+Use the discover_airtable_bases tool to see all your accessible Airtable bases
+```
+
+#### 8. `discover_airtable_schema`
+Discover complete schema (tables and fields) for a specific Airtable base.
+
+**Parameters:**
+- `base_id` (required): Airtable base ID to analyze (e.g., 'appXXXXXXXXXXXXXX')
+- `format` (optional): Output format - 'summary', 'detailed', or 'json'
+
+**Example:**
+```
+Use the discover_airtable_schema tool with base_id "appXXXXXXXXXXXXXX" to analyze base structure
+```
+
+#### 9. `find_airtable_customer_tables`
+Find tables in an Airtable base that likely contain customer data.
+
+**Parameters:**
+- `base_id` (required): Airtable base ID to analyze
+
+**Example:**
+```
+Use the find_airtable_customer_tables tool with base_id "appXXXXXXXXXXXXXX" to find customer tables
+```
+
+#### 10. `connect_to_airtable_base`
+🎯 **Key Feature**: Connect to a specific Airtable base - all subsequent operations will use this base.
+
+**Parameters:**
+- `base_id` (required): Airtable base ID to connect to
+
+**Example:**
+```
+Use the connect_to_airtable_base tool with base_id "appXXXXXXXXXXXXXX" to switch to this base
+```
+
+#### 11. `get_current_airtable_base`
+Show information about the currently connected Airtable base.
+
+**Example:**
+```
+Use the get_current_airtable_base tool to check which base you're currently using
+```
+
+### Typical Workflow
+
+1. **Discover bases**: `discover_airtable_bases` → See all available bases
+2. **Connect to base**: `connect_to_airtable_base` → Switch to chosen base  
+3. **List customers**: `list_customers` → See customers in that base
+4. **Analyze health**: `analyze_customer_health` → Get health scores
+5. **Get recommendations**: `get_recommendations` → Get action items
 
 ## Sample Data
 
@@ -294,31 +359,53 @@ To switch to dynamic mode:
 
 ## Example Usage with Claude Desktop
 
-Once configured, you can ask Claude to:
+### 🆕 Enhanced Airtable Workflow
 
-1. **"Switch to my Airtable database and show me all customers"**
-   - Uses `set_data_source` tool to switch to "airtable"
-   - Uses `list_customers` tool to show all Airtable customers
+**Discover and Connect to Your Data:**
+1. **"Show me all my Airtable bases"**
+   - Uses `discover_airtable_bases` tool
+   - Lists all accessible bases with IDs and names
 
-2. **"What data sources do I have configured?"**
-   - Uses `get_data_source_status` tool
-   - Shows current source and available options
+2. **"Connect to my customer database (appXXXXXXXXXXXXXX)"**
+   - Uses `connect_to_airtable_base` tool
+   - Automatically analyzes base and recommends customer tables
+   - Switches all tools to use this base
 
-3. **"Analyze the health of all our customers"**
+3. **"What's in this base and which tables have customer data?"**
+   - Uses `discover_airtable_schema` tool for complete base analysis
+   - Uses `find_airtable_customer_tables` tool for smart table detection
+
+### Classic Health Analysis Workflow
+
+4. **"List all customers in the connected base"**
+   - Uses `list_customers` tool
+   - Shows customers from currently connected Airtable base
+
+5. **"Analyze the health of all our customers"**
    - Uses `analyze_customer_health` tool
    - Returns comprehensive health scores and recommendations
 
-4. **"Show me details for customer CUST003"**
+6. **"Show me details for customer CUST003"**
    - Uses `get_customer_details` tool
    - Returns usage, CRM, and support data
 
-5. **"What should we do to help our at-risk customers?"**
+7. **"What should we do to help our at-risk customers?"**
    - Uses `analyze_customer_health` with summary format
    - Provides prioritized action items
 
-6. **"Give me specific recommendations for StartupXYZ"**
+8. **"Give me specific recommendations for StartupXYZ"**
    - Uses `get_recommendations` tool
    - Returns AI-generated action plan
+
+### Base Management
+
+9. **"Which Airtable base am I currently using?"**
+   - Uses `get_current_airtable_base` tool
+   - Shows current base info and connection status
+
+10. **"Switch to a different base for analysis"**
+    - Uses `connect_to_airtable_base` with new base ID
+    - All subsequent tools operate on new base
 
 ## Example Output
 
