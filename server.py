@@ -37,6 +37,13 @@ from models.customer_health import (
 )
 from orchestrator import CustomerHealthOrchestrator
 
+# Import Airtable discovery tool
+try:
+    from airtable_discovery import AirtableDiscoveryTool
+except ImportError as e:
+    print(f"⚠️ Airtable discovery not available: {e}", file=sys.stderr)
+    AirtableDiscoveryTool = None
+
 # Load environment variables
 load_dotenv()
 
@@ -142,6 +149,74 @@ async def handle_list_tools() -> list[Tool]:
                         }
                     },
                     "required": ["customer_id"],
+                    "additionalProperties": False,
+                }
+            ),
+            Tool(
+                name="discover_airtable_bases",
+                description="Discover all accessible Airtable bases for the configured API token",
+                inputSchema={
+                    "type": "object",
+                    "properties": {},
+                    "additionalProperties": False,
+                }
+            ),
+            Tool(
+                name="discover_airtable_schema",
+                description="Discover complete schema (tables and fields) for a specific Airtable base",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "base_id": {
+                            "type": "string",
+                            "description": "Airtable base ID to analyze (e.g., 'appXXXXXXXXXXXXXX')"
+                        },
+                        "format": {
+                            "type": "string",
+                            "enum": ["summary", "detailed", "json"],
+                            "description": "Output format - 'summary' for overview, 'detailed' for full report, 'json' for machine-readable format"
+                        }
+                    },
+                    "required": ["base_id"],
+                    "additionalProperties": False,
+                }
+            ),
+            Tool(
+                name="find_airtable_customer_tables",
+                description="Find tables in an Airtable base that likely contain customer data",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "base_id": {
+                            "type": "string",
+                            "description": "Airtable base ID to analyze (e.g., 'appXXXXXXXXXXXXXX')"
+                        }
+                    },
+                    "required": ["base_id"],
+                    "additionalProperties": False,
+                }
+            ),
+            Tool(
+                name="connect_to_airtable_base",
+                description="Connect to a specific Airtable base - all subsequent Airtable operations will use this base",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "base_id": {
+                            "type": "string",
+                            "description": "Airtable base ID to connect to (e.g., 'appXXXXXXXXXXXXXX')"
+                        }
+                    },
+                    "required": ["base_id"],
+                    "additionalProperties": False,
+                }
+            ),
+            Tool(
+                name="get_current_airtable_base",
+                description="Show information about the currently connected Airtable base",
+                inputSchema={
+                    "type": "object",
+                    "properties": {},
                     "additionalProperties": False,
                 }
             )
@@ -487,6 +562,220 @@ Reasoning: {score.reasoning}
             except Exception as rec_error:
                 print(f"❌ Error getting recommendations: {str(rec_error)}", file=sys.stderr)
                 return [TextContent(type="text", text=f"❌ Error getting recommendations: {str(rec_error)}")]
+        
+        elif name == "discover_airtable_bases":
+            try:
+                if not AirtableDiscoveryTool:
+                    return [TextContent(type="text", text="❌ Airtable discovery tool not available. Install pyairtable: pip install pyairtable")]
+                
+                print("🔍 Discovering all accessible Airtable bases...", file=sys.stderr)
+                
+                # Check if API key is configured
+                api_key = os.getenv("AIRTABLE_API_KEY")
+                if not api_key:
+                    return [TextContent(type="text", text="❌ AIRTABLE_API_KEY not configured. Please set your Personal Access Token in environment variables.")]
+                
+                discovery_tool = AirtableDiscoveryTool(api_key)
+                bases = discovery_tool.discover_all_bases()
+                
+                if not bases:
+                    return [TextContent(type="text", text="❌ No accessible bases found. Check your API token permissions.")]
+                
+                result = f"🔍 Discovered Airtable Bases\n{'='*30}\n\n"
+                result += f"Total accessible bases: {len(bases)}\n\n"
+                
+                for i, base in enumerate(bases, 1):
+                    result += f"{i}. **{base.name}**\n"
+                    result += f"   • Base ID: `{base.id}`\n"
+                    result += f"   • Permission Level: {base.permission_level}\n\n"
+                
+                result += "💡 Use `discover_airtable_schema` with a Base ID to analyze specific base structure."
+                
+                return [TextContent(type="text", text=result)]
+                
+            except Exception as e:
+                print(f"❌ Error discovering Airtable bases: {str(e)}", file=sys.stderr)
+                return [TextContent(type="text", text=f"❌ Error discovering bases: {str(e)}")]
+        
+        elif name == "discover_airtable_schema":
+            try:
+                if not AirtableDiscoveryTool:
+                    return [TextContent(type="text", text="❌ Airtable discovery tool not available. Install pyairtable: pip install pyairtable")]
+                
+                base_id = arguments.get("base_id")
+                if not base_id:
+                    return [TextContent(type="text", text="❌ Error: base_id parameter is required")]
+                
+                format_type = arguments.get("format", "detailed")
+                
+                print(f"🔍 Discovering schema for base: {base_id}", file=sys.stderr)
+                
+                # Check if API key is configured
+                api_key = os.getenv("AIRTABLE_API_KEY")
+                if not api_key:
+                    return [TextContent(type="text", text="❌ AIRTABLE_API_KEY not configured. Please set your Personal Access Token in environment variables.")]
+                
+                discovery_tool = AirtableDiscoveryTool(api_key)
+                
+                if format_type == "json":
+                    # Return JSON format
+                    schema_data = discovery_tool.export_schema_json(base_id)
+                    if not schema_data:
+                        return [TextContent(type="text", text=f"❌ Could not discover schema for base {base_id}")]
+                    
+                    import json
+                    return [TextContent(type="text", text=f"```json\n{json.dumps(schema_data, indent=2)}\n```")]
+                
+                elif format_type == "summary":
+                    # Return brief summary
+                    base_info = discovery_tool.discover_base_schema(base_id)
+                    if not base_info:
+                        return [TextContent(type="text", text=f"❌ Could not discover schema for base {base_id}")]
+                    
+                    result = f"📊 Base Schema Summary\n{'='*25}\n\n"
+                    result += f"**Base:** {base_info.name} (`{base_info.id}`)\n"
+                    result += f"**Tables:** {len(base_info.tables)}\n\n"
+                    
+                    # Find customer tables
+                    customer_tables = discovery_tool.find_customer_tables(base_id)
+                    if customer_tables:
+                        result += "🎯 **Recommended Customer Tables:**\n"
+                        for table, score in customer_tables[:3]:
+                            result += f"• {table.name} (confidence: {score:.1f}%)\n"
+                    
+                    result += f"\n📋 **All Tables:**\n"
+                    for table in base_info.tables:
+                        result += f"• {table.name} ({len(table.fields)} fields)\n"
+                    
+                    return [TextContent(type="text", text=result)]
+                
+                else:
+                    # Return detailed report
+                    report = discovery_tool.generate_discovery_report(base_id)
+                    if not report or report.startswith("❌"):
+                        return [TextContent(type="text", text=f"❌ Could not generate discovery report for base {base_id}")]
+                    
+                    return [TextContent(type="text", text=report)]
+                
+            except Exception as e:
+                print(f"❌ Error discovering Airtable schema: {str(e)}", file=sys.stderr)
+                return [TextContent(type="text", text=f"❌ Error discovering schema: {str(e)}")]
+        
+        elif name == "find_airtable_customer_tables":
+            try:
+                if not AirtableDiscoveryTool:
+                    return [TextContent(type="text", text="❌ Airtable discovery tool not available. Install pyairtable: pip install pyairtable")]
+                
+                base_id = arguments.get("base_id")
+                if not base_id:
+                    return [TextContent(type="text", text="❌ Error: base_id parameter is required")]
+                
+                print(f"🔍 Finding customer tables in base: {base_id}", file=sys.stderr)
+                
+                # Check if API key is configured
+                api_key = os.getenv("AIRTABLE_API_KEY")
+                if not api_key:
+                    return [TextContent(type="text", text="❌ AIRTABLE_API_KEY not configured. Please set your Personal Access Token in environment variables.")]
+                
+                discovery_tool = AirtableDiscoveryTool(api_key)
+                customer_tables = discovery_tool.find_customer_tables(base_id)
+                
+                if not customer_tables:
+                    return [TextContent(type="text", text=f"❌ No customer tables found in base {base_id}")]
+                
+                result = f"🎯 Customer Tables in Base {base_id}\n{'='*40}\n\n"
+                
+                for i, (table, confidence) in enumerate(customer_tables, 1):
+                    confidence_emoji = "🟢" if confidence >= 80 else "🟡" if confidence >= 60 else "🟠" if confidence >= 40 else "🔴"
+                    
+                    result += f"{i}. {confidence_emoji} **{table.name}** (Confidence: {confidence:.1f}%)\n"
+                    result += f"   • Fields: {len(table.fields)}\n"
+                    result += f"   • Primary Field: {table.primary_field or 'Unknown'}\n"
+                    
+                    # Show key customer-related fields
+                    customer_fields = []
+                    for field in table.fields[:5]:  # Show first 5 fields
+                        if any(keyword in field.name.lower() for keyword in ['email', 'name', 'customer', 'company']):
+                            customer_fields.append(f"{field.name} ({field.field_type})")
+                    
+                    if customer_fields:
+                        result += f"   • Key Fields: {', '.join(customer_fields)}\n"
+                    
+                    result += "\n"
+                
+                result += "💡 **Confidence Score Guide:**\n"
+                result += "• 🟢 80-100%: Highly likely customer table\n"
+                result += "• 🟡 60-79%: Probably customer table\n"
+                result += "• 🟠 40-59%: Possibly customer table\n"
+                result += "• 🔴 0-39%: Unlikely customer table\n\n"
+                result += "Use `set_data_source airtable` then `list_customers` to test the recommended table."
+                
+                return [TextContent(type="text", text=result)]
+                
+            except Exception as e:
+                print(f"❌ Error finding customer tables: {str(e)}", file=sys.stderr)
+                return [TextContent(type="text", text=f"❌ Error finding customer tables: {str(e)}")]
+        
+        elif name == "connect_to_airtable_base":
+            try:
+                base_id = arguments.get("base_id")
+                if not base_id:
+                    return [TextContent(type="text", text="❌ Error: base_id parameter is required")]
+                
+                print(f"🔗 Connecting to Airtable base: {base_id}", file=sys.stderr)
+                
+                # Use orchestrator to connect to the base
+                result = orchestrator.connect_to_airtable_base(base_id)
+                
+                if result.get("success"):
+                    return [TextContent(type="text", text=result.get("message", "Successfully connected to Airtable base!"))]
+                else:
+                    return [TextContent(type="text", text=f"❌ Failed to connect to base: {result.get('error', 'Unknown error')}")]
+                
+            except Exception as e:
+                print(f"❌ Error connecting to Airtable base: {str(e)}", file=sys.stderr)
+                return [TextContent(type="text", text=f"❌ Error connecting to base: {str(e)}")]
+        
+        elif name == "get_current_airtable_base":
+            try:
+                print("📊 Getting current Airtable base info...", file=sys.stderr)
+                
+                # Get current base info from orchestrator
+                base_info = orchestrator.get_current_airtable_base()
+                
+                if not base_info.get("connected"):
+                    result = "📊 **Airtable Base Status**\n" + "="*25 + "\n\n"
+                    result += "❌ **Not Connected**\n\n"
+                    result += "No Airtable base is currently connected.\n\n"
+                    result += "**To get started:**\n"
+                    result += "1. Use `discover_airtable_bases` to see available bases\n"
+                    result += "2. Use `connect_to_airtable_base` with a base ID to connect\n"
+                    result += "3. Then use `list_customers`, `analyze_customer_health`, etc.\n\n"
+                    if orchestrator.active_airtable_base_id:
+                        result += f"💡 Default base from .env: `{orchestrator.active_airtable_base_id}`"
+                else:
+                    result = "📊 **Current Airtable Base**\n" + "="*25 + "\n\n"
+                    result += f"✅ **Connected to Base**\n\n"
+                    result += f"• **Base ID:** `{base_info['base_id']}`\n"
+                    
+                    if "base_name" in base_info:
+                        result += f"• **Name:** {base_info['base_name']}\n"
+                        result += f"• **Tables:** {base_info['table_count']}\n"
+                        result += f"• **Permission Level:** {base_info['permission_level']}\n"
+                    
+                    result += f"• **Active Data Source:** {'✅ Yes' if base_info['is_active_source'] else '❌ No (use set_data_source airtable)'}\n\n"
+                    
+                    result += "**Available Operations:**\n"
+                    result += "• `list_customers` - See customers in this base\n"
+                    result += "• `analyze_customer_health` - Analyze customer health\n"
+                    result += "• `get_customer_details` - Get customer details\n"
+                    result += "• `connect_to_airtable_base` - Switch to different base"
+                
+                return [TextContent(type="text", text=result)]
+                
+            except Exception as e:
+                print(f"❌ Error getting current Airtable base: {str(e)}", file=sys.stderr)
+                return [TextContent(type="text", text=f"❌ Error getting base info: {str(e)}")]
         
         else:
             return [TextContent(type="text", text=f"Unknown tool: {name}")]

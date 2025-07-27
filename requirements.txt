@@ -7,4 +7,3 @@ python-dotenv
 requests
 hubspot-api-client
 pyairtable
-zapier-platform-client

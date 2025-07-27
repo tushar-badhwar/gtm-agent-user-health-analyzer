@@ -37,6 +37,10 @@ class CustomerHealthOrchestrator:
         print(f"🔧 Project root: {self.project_root}", file=sys.stderr)
         self.default_data_source = os.getenv("DEFAULT_DATA_SOURCE", "static")
         self.current_data_source = "static" if self.use_static_data else self.default_data_source
+        
+        # Active Airtable base management
+        self.active_airtable_base_id = os.getenv("AIRTABLE_BASE_ID")  # Default from env
+        self.active_airtable_base_info = None  # Will store base info when connected
     
     def set_data_source(self, data_source: str) -> Dict[str, Any]:
         """Set the active data source for customer health analysis"""
@@ -95,6 +99,111 @@ class CustomerHealthOrchestrator:
                 "success": False,
                 "error": f"Failed to set data source: {str(e)}"
             }
+    
+    def connect_to_airtable_base(self, base_id: str) -> Dict[str, Any]:
+        """Connect to a specific Airtable base and make it the active base for all operations"""
+        
+        try:
+            # Validate API key first
+            api_key = os.getenv("AIRTABLE_API_KEY")
+            if not api_key:
+                return {
+                    "success": False,
+                    "error": "AIRTABLE_API_KEY not configured. Please set your Personal Access Token in environment variables."
+                }
+            
+            # Import and test the discovery tool
+            try:
+                from airtable_discovery import AirtableDiscoveryTool
+                discovery_tool = AirtableDiscoveryTool(api_key)
+            except ImportError as e:
+                return {
+                    "success": False,
+                    "error": f"Airtable discovery tool not available. Please install pyairtable: pip install pyairtable. Error: {str(e)}"
+                }
+            
+            print(f"🔗 Connecting to Airtable base: {base_id}", file=sys.stderr)
+            
+            # Test connection and get base info
+            base_info = discovery_tool.discover_base_schema(base_id)
+            if not base_info:
+                return {
+                    "success": False,
+                    "error": f"Could not connect to base {base_id}. Check base ID and permissions."
+                }
+            
+            # Find customer tables in this base
+            customer_tables = discovery_tool.find_customer_tables(base_id)
+            
+            # Update active base
+            self.active_airtable_base_id = base_id
+            self.active_airtable_base_info = base_info
+            
+            # Switch to Airtable data source
+            self.current_data_source = "airtable"
+            self.use_static_data = False
+            
+            print(f"✅ Connected to Airtable base: {base_info.name}", file=sys.stderr)
+            
+            # Prepare response message
+            message = f"Successfully connected to Airtable base!\n\n"
+            message += f"📊 **Base Details:**\n"
+            message += f"• Name: {base_info.name}\n"
+            message += f"• Base ID: {base_id}\n"
+            message += f"• Tables: {len(base_info.tables)}\n"
+            message += f"• Permission Level: {base_info.permission_level}\n\n"
+            
+            if customer_tables:
+                message += f"🎯 **Recommended Customer Tables:**\n"
+                for table, confidence in customer_tables[:3]:
+                    confidence_emoji = "🟢" if confidence >= 80 else "🟡" if confidence >= 60 else "🟠"
+                    message += f"• {confidence_emoji} {table.name} (confidence: {confidence:.1f}%)\n"
+                message += f"\n"
+            
+            message += f"✅ **All tools now operate on this base!**\n"
+            message += f"• Use `list_customers` to see customers in this base\n"
+            message += f"• Use `analyze_customer_health` to analyze customers\n"
+            message += f"• Use `get_current_airtable_base` to check connection status"
+            
+            return {
+                "success": True,
+                "base_id": base_id,
+                "base_name": base_info.name,
+                "table_count": len(base_info.tables),
+                "customer_tables_found": len(customer_tables),
+                "message": message
+            }
+            
+        except Exception as e:
+            print(f"❌ Error connecting to Airtable base: {str(e)}", file=sys.stderr)
+            return {
+                "success": False,
+                "error": f"Failed to connect to base: {str(e)}"
+            }
+    
+    def get_current_airtable_base(self) -> Dict[str, Any]:
+        """Get information about the currently connected Airtable base"""
+        
+        if not self.active_airtable_base_id:
+            return {
+                "connected": False,
+                "message": "No Airtable base connected. Use connect_to_airtable_base to connect to a base."
+            }
+        
+        base_info = {
+            "connected": True,
+            "base_id": self.active_airtable_base_id,
+            "is_active_source": self.current_data_source == "airtable"
+        }
+        
+        if self.active_airtable_base_info:
+            base_info.update({
+                "base_name": self.active_airtable_base_info.name,
+                "table_count": len(self.active_airtable_base_info.tables),
+                "permission_level": self.active_airtable_base_info.permission_level
+            })
+        
+        return base_info
     
     def get_current_data_source(self) -> Dict[str, Any]:
         """Get information about the currently configured data source"""
@@ -312,7 +421,7 @@ class CustomerHealthOrchestrator:
             
             # Get base and discover all customers
             api_token = os.getenv("AIRTABLE_API_KEY")
-            base_id = os.getenv("AIRTABLE_BASE_ID")
+            base_id = self.active_airtable_base_id  # Use active base instead of env variable
             
             if not api_token or not base_id:
                 return {"error": "Airtable credentials not configured"}
